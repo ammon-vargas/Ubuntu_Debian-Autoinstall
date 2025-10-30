@@ -1,0 +1,133 @@
+#cloud-config
+autoinstall:
+  version: 1
+
+  # ----------------------------
+  # Run completely unattended
+  # ----------------------------
+  interactive-sections: []        # Skip all prompts (fully automatic install)
+
+  # ----------------------------
+  # System Language and Keyboard
+  # ----------------------------
+  locale: en_US
+  keyboard:
+    layout: us
+
+  # ----------------------------
+  # User Identity Configuration
+  # ----------------------------
+  identity:
+    realname: "VMware"       # Full name (for reference)
+    hostname: ubuntu-server               # System hostname
+    username: ammon                # User account name
+    password: "$6$hguwDFl3.X.mHzst$kgIZ8MdNtHRBInuokpi3HIq/SAslN/w170git4zUtmkuAdvk8WzjVSFCKB.tK4oMoSR5jsqyeOzUVW3ZHb4bV0"  # Encrypted password
+    # Above hash corresponds to: "weakkamogabos123"
+
+  # ----------------------------
+  # APT Repository Configuration
+  # ----------------------------
+  apt:
+    primary:
+      - arches: [amd64]
+        uri: http://mirror.rise.ph/ubuntu   # Local Ubuntu mirror
+    preserve_sources_list: false
+
+  # ----------------------------
+  # Static Network Configuration
+  # ----------------------------
+  network:
+    version: 2
+    ethernets:
+      ens33:
+        dhcp4: false
+        addresses: [172.16.0.10/24]
+        routes:
+          - to: default
+            via: 172.16.0.2
+        nameservers:
+          addresses: [1.1.1.1, 8.8.8.8]
+
+  # ----------------------------
+  # SSH Configuration
+  # ----------------------------
+  ssh:
+    install-server: yes
+    allow-pw: yes
+    import-id:
+      - github:ammon-vargas           # Import SSH key from GitHub user
+
+  # ----------------------------
+  # Package Installation
+  # ----------------------------
+  packages:
+    - openssh-server
+    - net-tools
+    - btrfs-progs
+    - htop
+    - android-tools-adb
+    - vim
+  # ----------------------------
+  # Storage Configuration (UEFI + Btrfs + optional swap)
+  # ----------------------------
+  storage:
+    layout:
+      name: direct
+    config:
+      # ---- Select target disk ----
+      - id: disk0
+        type: disk
+        match:
+          size: largest
+        wipe: superblock-recursive
+        ptable: gpt
+        grub_device: true
+
+      # ---- EFI System Partition ----
+      - id: partition-efi
+        type: partition
+        device: disk0
+        size: 512M
+        flag: boot
+        grub_device: true
+      - id: format-efi
+        type: format
+        volume: partition-efi
+        fstype: fat32
+      - id: mount-efi
+        type: mount
+        device: format-efi
+        path: /boot/efi
+
+      # ---- Root Partition (Btrfs) ----
+      - id: partition-root
+        type: partition
+        device: disk0
+        size: 50G           # or -1 to use all remaining space if no swap
+      - id: format-root
+        type: format
+        volume: partition-root
+        fstype: btrfs
+      - id: mount-root
+        type: mount
+        device: format-root
+        path: /
+
+      # ---- Swap Partition (Optional) ----
+      - id: partition-swap
+        type: partition
+        device: disk0
+        size: 4G
+      - id: format-swap
+        type: format
+        volume: partition-swap
+        fstype: swap
+      - id: mount-swap
+        type: mount
+        device: format-swap
+        path: none
+        swap: swap
+
+  late-commands:
+    - curtin in-target --target=/target systemctl enable ssh      # Ensure SSH auto-start
+    - curtin in-target --target=/target reboot                    # Reboot automatically after install
