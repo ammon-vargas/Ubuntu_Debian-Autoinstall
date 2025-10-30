@@ -1,0 +1,5 @@
+# Exclude Debian Autoinstall specific files and folders
+Debian-Autoinstall/preseed.cfg
+
+Ubuntu-Autoinstall/autoinstall/user-data
+Ubuntu-Autoinstall/autoinstall/manual/user-data
