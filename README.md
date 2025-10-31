@@ -14,6 +14,12 @@ This repository contains the necessary configuration files to create custom boot
     - [Notable Options (Debian)](#notable-options-debian)
     - [How It Works (Debian)](#how-it-works-debian)
   - [Cautions and Important Notes](#cautions-and-important-notes)
+    - [Customization](#customization)
+    - [Verification](#verification)
+  - [How to Use This Repository](#how-to-use-this-repository)
+    - [Prerequisites](#prerequisites)
+    - [Building a Custom Ubuntu ISO](#building-a-custom-ubuntu-iso)
+    - [Building a Custom Debian ISO](#building-a-custom-debian-iso)
 
 ---
 
@@ -125,6 +131,111 @@ The content of the specified `preseed.cfg` file (whether local or remote) then d
 ---
 ## Cautions and Important Notes
 
+<br>
+
+> [!WARNING]
+> **Destructive Operations**: The fully automated options for both Ubuntu and Debian are designed to **wipe the target disk without confirmation**. Use them with extreme caution and only on machines where you intend to erase all existing data.
+
+> [!IMPORTANT]
+> **Default Passwords**: The sample configuration files (`preseed.cfg`, `user-data`) contain insecure, hardcoded passwords (e.g., `weakkamogabos123`). These are for demonstration purposes only. **You must change these passwords before using the ISO in any real environment.**
+
+> [!NOTE]
+> **Network Dependency**: The remote preseed/autoinstall options require a reliable network connection with DHCP available at boot time. If the installer cannot get an IP address and reach the specified URL, the installation will fail or fall back to manual mode.
+
+### Customization
+
+-   For **Ubuntu**, modify the `user-data` and `meta-data` files in the `Ubuntu-Autoinstall/autoinstall/` directory to change packages, user accounts, or storage layouts.
+-   For **Debian**, modify the `Debian-Autoinstall/sample-preseed.cfg` file to change the desired configuration. You can also use the `build.sh` script to generate a new one.
+
+### Verification
+
+Always test your custom ISOs in a virtual machine (like VirtualBox or QEMU) or on non-critical hardware before deploying them in a live environment.
+
+---
+
+## How to Use This Repository
+
+Follow these steps to create your own custom bootable ISO.
+
+### Prerequisites
+
+You will need a Linux environment with the following tools installed:
+- `xorriso`: For creating and modifying ISO images.
+- `wget` or `curl`: For downloading the base ISO.
+
+You can install these on a Debian/Ubuntu system with:
+```bash
+sudo apt-get update
+sudo apt-get install -y xorriso wget
+```
+
+### Building a Custom Ubuntu ISO
+
+1.  **Download Ubuntu Server ISO**: Get the official ISO you want to customize.
+2.  **Mount the ISO**: Create a directory to mount the original ISO contents.
+    ```bash
+    mkdir -p /tmp/ubuntu-iso
+    sudo mount -o loop path/to/ubuntu-server.iso /tmp/ubuntu-iso
+    ```
+3.  **Copy ISO Contents**: Copy the contents to a working directory where you can make changes.
+    ```bash
+    mkdir -p /tmp/ubuntu-new
+    rsync -av /tmp/ubuntu-iso/ /tmp/ubuntu-new/
+    ```
+4.  **Copy Your Custom Files**: Copy the `autoinstall` directory and the modified `grub.cfg` into your new ISO structure.
+    ```bash
+    # Copy autoinstall configurations
+    cp -r path/to/Ubuntu-Autoinstall/autoinstall /tmp/ubuntu-new/
+    # Overwrite the GRUB configuration
+    cp path/to/Ubuntu-Autoinstall/boot/grub/grub.cfg /tmp/ubuntu-new/boot/grub/grub.cfg
+    ```
+5.  **Generate the New ISO**: Use `xorriso` to create the new bootable ISO.
+    ```bash
+    sudo xorriso -as mkisofs -r \
+      -V "Ubuntu-Autoinstall-Custom" \
+      -o ubuntu-autoinstall-custom.iso \
+      -J -l -b isolinux/isolinux.bin -c isolinux/boot.cat -no-emul-boot \
+      -boot-load-size 4 -boot-info-table \
+      -eltorito-alt-boot -e boot/grub/efi.img -no-emul-boot \
+      -isohybrid-gpt-basdat -isohybrid-apm-table \
+      /tmp/ubuntu-new/
+    ```
+
+### Building a Custom Debian ISO
+
+1.  **Download Debian Netinstall ISO**: Get the official network install ISO.
+2.  **Mount the ISO**:
+    ```bash
+    mkdir -p /tmp/debian-iso
+    sudo mount -o loop path/to/debian-netinst.iso /tmp/debian-iso
+    ```
+3.  **Copy ISO Contents**:
+    ```bash
+    mkdir -p /tmp/debian-new
+    rsync -av /tmp/debian-iso/ /tmp/debian-new/
+    ```
+4.  **Copy Your Custom Files**:
+    -   Use the `build.sh` script to generate a `preseed.cfg` or modify the `sample-preseed.cfg`.
+    -   Copy the `preseed.cfg` to the root of the new ISO directory for the local install option.
+    -   Overwrite the `grub.cfg`.
+    ```bash
+    # Copy your preseed file for the "local" install option
+    cp path/to/Debian-Autoinstall/sample-preseed.cfg /tmp/debian-new/preseed.cfg
+    # Overwrite the GRUB configuration
+    cp path/to/Debian-Autoinstall/boot/grub.cfg /tmp/debian-new/boot/grub/grub.cfg
+    ```
+5.  **Generate the New ISO**:
+    ```bash
+    sudo xorriso -as mkisofs -r \
+      -V "Debian-Preseed-Custom" \
+      -o debian-preseed-custom.iso \
+      -J -l -b isolinux/isolinux.bin -c isolinux/boot.cat -no-emul-boot \
+      -boot-load-size 4 -boot-info-table \
+      -eltorito-alt-boot -e boot/grub/efi.img -no-emul-boot \
+      -isohybrid-gpt-basdat -isohybrid-apm-table \
+      /tmp/debian-new/
+    ```
+
 ⚠️ **Destructive Operations**: The fully automated options for both Ubuntu and Debian are designed to wipe the target disk without confirmation. Use them with extreme caution and only on machines where you intend to erase all existing data.
 
 🔒 **Default Passwords**: The Debian `preseed.cfg` file contains a hardcoded password (`weakkamogabos123`) for both the user and the remote SSH installer session. This is insecure and intended for development/testing only. **You must change these passwords before using the ISO in a production environment.**
@@ -133,11 +244,4 @@ The content of the specified `preseed.cfg` file (whether local or remote) then d
 
 🔧 **Customization**:
 -   For **Ubuntu**, modify the `user-data` files in the `autoinstall/` directory to change packages, user accounts, or storage layouts.
--   For **Debian**, modify the `preseed.cfg` file to change the desired configuration.
-
-✅ **Verification**: Always test your custom ISOs in a virtual machine or on non-critical hardware before deploying them in a live environment.
-
-
-<!--
-[PROMPT_SUGGESTION]How can I modify the Ubuntu user-data file to create a different disk partition scheme?[/PROMPT_SUGGESTION]
-[PROMPT_SUGGESTION]Explain the differences between Ubuntu's cloud-init autoinstall and Debian's preseed method.[/PROMPT_SUGGESTION]
+-   For **Debian**, modify the `preseed.cfg` file to change the desired configuration. You can also use the `build.sh` script to generate a new one.
