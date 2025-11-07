@@ -1,0 +1,159 @@
+#cloud-config
+autoinstall:
+  version: 1
+
+  # 1️⃣ Identity (user setup)
+  identity:
+    hostname: <string>
+    username: <string>
+    password: <hashed password>
+
+  # 2️⃣ Locale and region settings
+  locale: en_US
+  timezone: Asia/Manila
+  keyboard:
+    layout: us
+    variant: ""
+    toggle: null
+
+  # 3️⃣ Network configuration
+  network:
+    network:
+      version: 2
+      ethernets:
+        eth0:
+          dhcp4: true
+          optional: true
+
+  # 4️⃣ Storage (partitioning)
+  storage:
+    layout:
+      name: direct | lvm | zfs | custom
+    config:
+      - type: disk
+        id: disk0
+        match:
+          size: largest
+        wipe: superblock-recursive
+        preserve: false
+        ptable: gpt
+        grub_device: true
+        partitions:
+          - id: efi
+            size: 512M
+            flag: boot
+            type: partition
+            name: EFI
+            filesystem: fat32
+            mountpoint: /boot/efi
+          - id: root
+            size: -1
+            type: partition
+            name: root
+            filesystem: ext4
+            mountpoint: /
+  # 5️⃣ User accounts (beyond identity)
+  user-data:
+    disable_root: true
+    ssh_pwauth: true
+    chpasswd:
+      expire: false
+    users:
+      - name: ammon
+        gecos: "Ammon Vargas"
+        shell: /bin/bash
+        groups: [sudo, adm]
+
+  # 6️⃣ SSH setup
+  ssh:
+    install-server: true
+    allow-pw: false
+    authorized-keys:
+      - ssh-rsa AAAA[...]== user@example
+
+  # 7️⃣ Packages
+  packages:
+    - gnome-shell
+    - gnome-terminal
+    - firefox
+
+  # 8️⃣ Snaps (optional)
+  snaps:
+    - name: chromium
+      channel: stable
+      classic: true
+
+  # 9️⃣ Drivers
+  drivers:
+    install: true
+
+  # 🔟 Proxy
+  proxy:
+    http: http://proxy.example.com:8080
+    https: http://proxy.example.com:8080
+    ftp: null
+    no_proxy: localhost,127.0.0.1
+
+  # 11️⃣ Kernel
+  kernel:
+    package: linux-generic-hwe-24.04
+    upgrade: true
+
+  # 12️⃣ OEM Config (for factory/OEM installs)
+  oem:
+    enable: false
+    user-setup: true
+
+  # 13️⃣ Ubiquity compat (legacy)
+  apt:
+    primary:
+      - arches: [default]
+        uri: http://archive.ubuntu.com/ubuntu
+    preserve_sources_list: false
+    geoip: true
+    fallback: true
+    update: true
+    upgrade: true
+
+  # 14️⃣ Reporting
+  reporting:
+    builtin:
+      type: print
+    webhook:
+      type: webhook
+      endpoint: http://10.0.0.10:8080/report
+      level: INFO
+
+  # 15️⃣ Early commands (before partitioning)
+  early-commands:
+    - curtin in-target --target=/target -- apt-add-repository universe
+    - echo "Starting autoinstall..." > /tmp/ai-start.log
+
+  # 16️⃣ Late commands (after system installed)
+  late-commands:
+    - echo "Installation complete" > /target/root/finished.txt
+    - curtin in-target --target=/target -- apt-get update
+    - curtin in-target --target=/target -- apt-get -y upgrade
+    - curtin in-target --target=/target -- systemctl enable ssh
+
+  # 17️⃣ Error handling
+  error-commands:
+    - echo "Install failed" > /target/root/install_error.log
+
+  # 18️⃣ Bootloader config
+  grub:
+    install_devices: ["/dev/sda"]
+    replace: true
+
+  # 19️⃣ Source (for specifying install media mirror)
+  source:
+    id: ubuntu-desktop
+    search_drivers: true
+    variant: desktop
+    dirmnt: /cdrom
+    path: /cdrom/casper/filesystem.squashfs
+
+  # 20️⃣ Refresh (used for offline upgrades)
+  refresh:
+    update: true
+    upgrade: true
