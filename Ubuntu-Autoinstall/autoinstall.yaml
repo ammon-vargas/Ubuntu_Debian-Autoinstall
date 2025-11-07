@@ -73,9 +73,19 @@ autoinstall:
 
   # 7️⃣ Packages
   packages:
+    # Core GNOME desktop and browser
     - gnome-shell
     - gnome-terminal
     - firefox
+
+    # Proprietary drivers and codecs similar to GUI "Download and install support for additional media formats"
+    - ubuntu-drivers-common
+    - intel-microcode
+    - amd64-microcode
+    - ubuntu-restricted-extras
+    - gstreamer1.0-libav
+    - gstreamer1.0-plugins-bad
+    - gstreamer1.0-plugins-ugly
 
   # 8️⃣ Snaps (optional)
   snaps:
@@ -83,7 +93,7 @@ autoinstall:
       channel: stable
       classic: true
 
-  # 9️⃣ Drivers
+  # 9️⃣ Drivers similar to GUI "Install third-party software for graphics and Wi-Fi hardware"
   drivers:
     install: true
 
